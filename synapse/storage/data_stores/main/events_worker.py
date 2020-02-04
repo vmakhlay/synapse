@@ -661,6 +661,9 @@ class EventsWorkerStore(SQLBaseStore):
            of EventFormatVersions. 'None' means the event predates
            EventFormatVersions (so the event is format V1).
 
+         * room_version_id (str): The version of the room which contains the event.
+           Hopefully one of RoomVersions.
+
          * rejected_reason (str|None): if the event was rejected, the reason
            why.
 
@@ -676,17 +679,18 @@ class EventsWorkerStore(SQLBaseStore):
         """
         event_dict = {}
         for evs in batch_iter(event_ids, 200):
-            sql = (
-                "SELECT "
-                " e.event_id, "
-                " e.internal_metadata,"
-                " e.json,"
-                " e.format_version, "
-                " rej.reason "
-                " FROM event_json as e"
-                " LEFT JOIN rejections as rej USING (event_id)"
-                " WHERE "
-            )
+            sql = """\
+                SELECT
+                  e.event_id,
+                  e.internal_metadata,
+                  e.json,
+                  e.format_version,
+                  r.room_version,
+                  rej.reason
+                FROM event_json as e
+                  INNER JOIN rooms r USING (room_id)
+                  LEFT JOIN rejections as rej USING (event_id)
+                WHERE """
 
             clause, args = make_in_list_sql_clause(
                 txn.database_engine, "e.event_id", evs
@@ -701,7 +705,8 @@ class EventsWorkerStore(SQLBaseStore):
                     "internal_metadata": row[1],
                     "json": row[2],
                     "format_version": row[3],
-                    "rejected_reason": row[4],
+                    "room_version_id": row[4],
+                    "rejected_reason": row[5],
                     "redactions": [],
                 }
 
