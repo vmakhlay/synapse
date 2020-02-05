@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import os
 from distutils.util import strtobool
-from typing import Optional, Type
+from typing import Dict, Optional, Type
 
 import six
 
@@ -162,15 +163,25 @@ def _event_dict_property(key, default=_SENTINEL):
         return property(getter_default, setter, delete)
 
 
-class EventBase(object):
+class EventBase(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def format_version(self) -> int:
+        """The EventFormatVersion implemented by this event"""
+        ...
+
     def __init__(
         self,
-        event_dict,
-        signatures={},
-        unsigned={},
-        internal_metadata_dict={},
-        rejected_reason=None,
+        event_dict: JsonDict,
+        room_version: RoomVersion,
+        signatures: Dict[str, Dict[str, str]],
+        unsigned: JsonDict,
+        internal_metadata_dict: JsonDict,
+        rejected_reason: Optional[str],
     ):
+        assert room_version.event_format == self.format_version
+
+        self.room_version = room_version
         self.signatures = signatures
         self.unsigned = unsigned
         self.rejected_reason = rejected_reason
@@ -266,7 +277,13 @@ class EventBase(object):
 class FrozenEvent(EventBase):
     format_version = EventFormatVersions.V1  # All events of this type are V1
 
-    def __init__(self, event_dict, internal_metadata_dict={}, rejected_reason=None):
+    def __init__(
+        self,
+        event_dict: JsonDict,
+        room_version: RoomVersion,
+        internal_metadata_dict: JsonDict = {},
+        rejected_reason: Optional[str] = None,
+    ):
         event_dict = dict(event_dict)
 
         # Signatures is a dict of dicts, and this is faster than doing a
@@ -289,8 +306,9 @@ class FrozenEvent(EventBase):
 
         self._event_id = event_dict["event_id"]
 
-        super(FrozenEvent, self).__init__(
+        super().__init__(
             frozen_dict,
+            room_version=room_version,
             signatures=signatures,
             unsigned=unsigned,
             internal_metadata_dict=internal_metadata_dict,
@@ -315,7 +333,13 @@ class FrozenEvent(EventBase):
 class FrozenEventV2(EventBase):
     format_version = EventFormatVersions.V2  # All events of this type are V2
 
-    def __init__(self, event_dict, internal_metadata_dict={}, rejected_reason=None):
+    def __init__(
+        self,
+        event_dict: JsonDict,
+        room_version: RoomVersion,
+        internal_metadata_dict: JsonDict = {},
+        rejected_reason: Optional[str] = None,
+    ):
         event_dict = dict(event_dict)
 
         # Signatures is a dict of dicts, and this is faster than doing a
@@ -340,8 +364,9 @@ class FrozenEventV2(EventBase):
 
         self._event_id = None
 
-        super(FrozenEventV2, self).__init__(
+        super().__init__(
             frozen_dict,
+            room_version=room_version,
             signatures=signatures,
             unsigned=unsigned,
             internal_metadata_dict=internal_metadata_dict,
@@ -438,4 +463,4 @@ def make_event_from_dict(
 ) -> EventBase:
     """Construct an EventBase from the given event dict"""
     event_type = event_type_from_format_version(room_version.event_format)
-    return event_type(event_dict, internal_metadata_dict, rejected_reason)
+    return event_type(event_dict, room_version, internal_metadata_dict, rejected_reason)
