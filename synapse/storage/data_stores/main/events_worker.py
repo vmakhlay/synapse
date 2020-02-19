@@ -28,8 +28,8 @@ from twisted.internet import defer
 
 from synapse.api.constants import EventTypes
 from synapse.api.errors import NotFoundError
-from synapse.api.room_versions import KNOWN_ROOM_VERSIONS
-from synapse.events import make_event_from_dict
+from synapse.api.room_versions import KNOWN_ROOM_VERSIONS, EventFormatVersions
+from synapse.events import event_type_from_format_version
 from synapse.events.utils import prune_event
 from synapse.logging.context import LoggingContext, PreserveLoggingContext
 from synapse.metrics.background_process_metrics import run_as_background_process
@@ -573,20 +573,47 @@ class EventsWorkerStore(SQLBaseStore):
             d = json.loads(row["json"])
             internal_metadata = json.loads(row["internal_metadata"])
 
-            room_version_id = row["room_version_id"]
-            room_version = KNOWN_ROOM_VERSIONS.get(room_version_id)
-            if not room_version:
-                logger.error(
-                    "Event %s in room %s has unknown room version %s",
-                    event_id,
-                    d["room_id"],
-                    room_version_id,
-                )
-                continue
+            format_version = row["format_version"]
+            if format_version is None:
+                # This means that we stored the event before we had the concept
+                # of a event format version, so it must be a V1 event.
+                format_version = EventFormatVersions.V1
 
-            original_ev = make_event_from_dict(
+            room_version_id = row["room_version_id"]
+
+            if not room_version_id:
+                # this should only happen for out-of-band membership events
+                if not internal_metadata.get("out_of_band_membership"):
+                    logger.error(
+                        "Room %s for event %s is unknown", d["room_id"], event_id
+                    )
+                    continue
+                room_version = None
+            else:
+                room_version = KNOWN_ROOM_VERSIONS.get(room_version_id)
+                if not room_version:
+                    logger.error(
+                        "Event %s in room %s has unknown room version %s",
+                        event_id,
+                        d["room_id"],
+                        room_version_id,
+                    )
+                    continue
+
+                if room_version.event_format != format_version:
+                    logger.error(
+                        "Event %s in room %s with version %s has wrong format: "
+                        "expected %s, was %s",
+                        event_id,
+                        d["room_id"],
+                        room_version_id,
+                        room_version.event_format,
+                        format_version,
+                    )
+                    continue
+
+            original_ev = event_type_from_format_version(format_version)(
                 event_dict=d,
-                room_version=room_version,
                 internal_metadata_dict=internal_metadata,
                 rejected_reason=rejected_reason,
             )
@@ -666,8 +693,12 @@ class EventsWorkerStore(SQLBaseStore):
            of EventFormatVersions. 'None' means the event predates
            EventFormatVersions (so the event is format V1).
 
-         * room_version_id (str): The version of the room which contains the event.
+         * room_version_id (str|None): The version of the room which contains the event.
            Hopefully one of RoomVersions.
+
+           Note that there are some kinds of event which are received out-of-band
+           from the room (invites received over federation, for example), in which case
+           this will be set to None.
 
          * rejected_reason (str|None): if the event was rejected, the reason
            why.
@@ -693,7 +724,7 @@ class EventsWorkerStore(SQLBaseStore):
                   r.room_version,
                   rej.reason
                 FROM event_json as e
-                  INNER JOIN rooms r USING (room_id)
+                  LEFT JOIN rooms r USING (room_id)
                   LEFT JOIN rejections as rej USING (event_id)
                 WHERE """
 
