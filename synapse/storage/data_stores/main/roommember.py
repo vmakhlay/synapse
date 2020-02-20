@@ -33,7 +33,7 @@ from synapse.storage._base import (
 )
 from synapse.storage.data_stores.main.events_worker import EventsWorkerStore
 from synapse.storage.database import Database
-from synapse.storage.engines import Sqlite3Engine
+from synapse.storage.engines import Sqlite3Engine, MSSqlEngine
 from synapse.storage.roommember import (
     GetRoomsForUserWithStreamOrdering,
     MemberSummary,
@@ -101,7 +101,8 @@ class RoomMemberWorkerStore(EventsWorkerStore):
         """
 
         def _transact(txn):
-            if isinstance(self.database_engine, Sqlite3Engine):
+            if isinstance(self.database_engine, Sqlite3Engine) or \
+                    isinstance(self.database_engine, MSSqlEngine):
                 query = """
                     SELECT COUNT(DISTINCT substr(out.user_id, pos+1))
                     FROM (

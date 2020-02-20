@@ -36,10 +36,10 @@ class DatabaseConnectionConfig:
     """
 
     def __init__(self, name: str, db_config: dict):
-        if db_config["name"] not in ("sqlite3", "psycopg2"):
+        if db_config["name"] not in ("sqlite3", "psycopg2", "mssql"):
             raise ConfigError("Unsupported database type %r" % (db_config["name"],))
 
-        if db_config["name"] == "sqlite3":
+        if db_config["name"] in ("sqlite3", "mssql"):
             db_config.setdefault("args", {}).update(
                 {"cp_min": 1, "cp_max": 1, "check_same_thread": False}
             )

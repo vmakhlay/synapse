@@ -327,7 +327,7 @@ class SearchBackgroundUpdateStore(SQLBaseStore):
 
             txn.executemany(sql, args)
 
-        elif isinstance(self.database_engine, Sqlite3Engine):
+        else:
             sql = (
                 "INSERT INTO event_search (event_id, room_id, key, value)"
                 " VALUES (?,?,?,?)"
@@ -338,9 +338,6 @@ class SearchBackgroundUpdateStore(SQLBaseStore):
             )
 
             txn.executemany(sql, args)
-        else:
-            # This should be unreachable.
-            raise Exception("Unrecognized database engine")
 
 
 class SearchStore(SearchBackgroundUpdateStore):
@@ -421,7 +418,7 @@ class SearchStore(SearchBackgroundUpdateStore):
                 " WHERE vector @@ to_tsquery('english', ?)"
             )
             count_args = [search_query] + count_args
-        elif isinstance(self.database_engine, Sqlite3Engine):
+        else:
             sql = (
                 "SELECT rank(matchinfo(event_search)) as rank, room_id, event_id"
                 " FROM event_search"
@@ -434,10 +431,6 @@ class SearchStore(SearchBackgroundUpdateStore):
                 " WHERE value MATCH ?"
             )
             count_args = [search_term] + count_args
-        else:
-            # This should be unreachable.
-            raise Exception("Unrecognized database engine")
-
         for clause in clauses:
             sql += " AND " + clause
 
@@ -553,7 +546,7 @@ class SearchStore(SearchBackgroundUpdateStore):
                 " WHERE vector @@ to_tsquery('english', ?) AND "
             )
             count_args = [search_query] + count_args
-        elif isinstance(self.database_engine, Sqlite3Engine):
+        else:
             # We use CROSS JOIN here to ensure we use the right indexes.
             # https://sqlite.org/optoverview.html#crossjoin
             #
@@ -579,9 +572,6 @@ class SearchStore(SearchBackgroundUpdateStore):
                 " WHERE value MATCH ? AND "
             )
             count_args = [search_term] + count_args
-        else:
-            # This should be unreachable.
-            raise Exception("Unrecognized database engine")
 
         sql += " AND ".join(clauses)
         count_sql += " AND ".join(count_clauses)
@@ -593,10 +583,8 @@ class SearchStore(SearchBackgroundUpdateStore):
                 " ORDER BY origin_server_ts DESC NULLS LAST,"
                 " stream_ordering DESC NULLS LAST LIMIT ?"
             )
-        elif isinstance(self.database_engine, Sqlite3Engine):
-            sql += " ORDER BY origin_server_ts DESC, stream_ordering DESC LIMIT ?"
         else:
-            raise Exception("Unrecognized database engine")
+            sql += " ORDER BY origin_server_ts DESC, stream_ordering DESC LIMIT ?"
 
         args.append(limit)
 
@@ -726,8 +714,5 @@ def _parse_query(database_engine, search_term):
 
     if isinstance(database_engine, PostgresEngine):
         return " & ".join(result + ":*" for result in results)
-    elif isinstance(database_engine, Sqlite3Engine):
-        return " & ".join(result + "*" for result in results)
     else:
-        # This should be unreachable.
-        raise Exception("Unrecognized database engine")
+        return " & ".join(result + "*" for result in results)

@@ -23,6 +23,7 @@ from collections import Counter
 import attr
 
 from synapse.storage.engines.postgres import PostgresEngine
+from synapse.storage.engines.mssql import MSSqlEngine
 
 logger = logging.getLogger(__name__)
 

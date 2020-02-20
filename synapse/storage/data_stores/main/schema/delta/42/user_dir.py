@@ -73,11 +73,9 @@ def run_create(cur, database_engine, *args, **kwargs):
     if isinstance(database_engine, PostgresEngine):
         for statement in get_statements(POSTGRES_TABLE.splitlines()):
             cur.execute(statement)
-    elif isinstance(database_engine, Sqlite3Engine):
+    else:
         for statement in get_statements(SQLITE_TABLE.splitlines()):
             cur.execute(statement)
-    else:
-        raise Exception("Unrecognized database engine")
 
 
 def run_upgrade(*args, **kwargs):

@@ -32,7 +32,7 @@ from synapse.config.database import DatabaseConnectionConfig
 from synapse.logging.context import LoggingContext, make_deferred_yieldable
 from synapse.metrics.background_process_metrics import run_as_background_process
 from synapse.storage.background_updates import BackgroundUpdater
-from synapse.storage.engines import PostgresEngine, Sqlite3Engine
+from synapse.storage.engines import PostgresEngine, Sqlite3Engine, MSSqlEngine
 from synapse.util.stringutils import exception_to_unicode
 
 # import a function which will return a monotonic time, in seconds
@@ -276,7 +276,8 @@ class Database(object):
         # We add the user_directory_search table to the blacklist on SQLite
         # because the existing search table does not have an index, making it
         # unsafe to use native upserts.
-        if isinstance(self.engine, Sqlite3Engine):
+        if isinstance(self.engine, Sqlite3Engine) or \
+                isinstance(self.engine, MSSqlEngine):
             self._unsafe_to_upsert_tables.add("user_directory_search")
 
         if self.engine.can_native_upsert:

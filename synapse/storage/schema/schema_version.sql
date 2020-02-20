@@ -13,22 +13,39 @@
  * limitations under the License.
  */
 
-CREATE TABLE IF NOT EXISTS schema_version(
-    Lock CHAR(1) NOT NULL DEFAULT 'X' UNIQUE,  -- Makes sure this table only has one row.
-    version INTEGER NOT NULL,
-    upgraded BOOL NOT NULL,  -- Whether we reached this version from an upgrade or an initial schema.
-    CHECK (Lock='X')
-);
+-- CREATE TABLE IF NOT EXISTS schema_version(
+--     Lock CHAR(1) NOT NULL DEFAULT 'X' UNIQUE,  -- Makes sure this table only has one row.
+--     version INTEGER NOT NULL,
+--     upgraded BOOL NOT NULL,  -- Whether we reached this version from an upgrade or an initial schema.
+--     CHECK (Lock='X')
+-- );
+--
+-- CREATE TABLE IF NOT EXISTS applied_schema_deltas(
+--     version INTEGER NOT NULL,
+--     file TEXT NOT NULL,
+--     UNIQUE(version, file)
+-- );
+--
+-- -- a list of schema files we have loaded on behalf of dynamic modules
+-- CREATE TABLE IF NOT EXISTS applied_module_schemas(
+--     module_name TEXT NOT NULL,
+--     file TEXT NOT NULL,
+--     UNIQUE(module_name, file)
+-- );
 
-CREATE TABLE IF NOT EXISTS applied_schema_deltas(
-    version INTEGER NOT NULL,
-    file TEXT NOT NULL,
-    UNIQUE(version, file)
-);
 
--- a list of schema files we have loaded on behalf of dynamic modules
-CREATE TABLE IF NOT EXISTS applied_module_schemas(
-    module_name TEXT NOT NULL,
-    file TEXT NOT NULL,
-    UNIQUE(module_name, file)
-);
+IF OBJECT_ID(N'dbo.schema_version', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
+        Lock CHAR(1) NOT NULL DEFAULT 'X' UNIQUE,
+        version INTEGER NOT NULL,
+        upgraded BIT NOT NULL,
+        CHECK (Lock='X')); END;
+
+IF OBJECT_ID(N'dbo.applied_schema_deltas', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
+        version INTEGER NOT NULL,
+        file TEXT NOT NULL,
+        UNIQUE(version, file)); END;
+
+IF OBJECT_ID(N'dbo.applied_module_schemas', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
+        module_name TEXT NOT NULL,
+        file TEXT NOT NULL,
+        UNIQUE(module_name, file)); END;

@@ -441,7 +441,7 @@ class UserDirectoryBackgroundUpdateStore(StateDeltasStore):
                         raise RuntimeError(
                             "upsert returned None when 'can_native_upsert' is False"
                         )
-            elif isinstance(self.database_engine, Sqlite3Engine):
+            else:
                 value = "%s %s" % (user_id, display_name) if display_name else user_id
                 self.db.simple_upsert_txn(
                     txn,
@@ -450,9 +450,6 @@ class UserDirectoryBackgroundUpdateStore(StateDeltasStore):
                     values={"value": value},
                     lock=False,  # We're only inserter
                 )
-            else:
-                # This should be unreachable.
-                raise Exception("Unrecognized database engine")
 
             txn.call_after(self.get_user_in_directory.invalidate, (user_id,))
 
@@ -771,7 +768,7 @@ class UserDirectoryStore(UserDirectoryBackgroundUpdateStore):
                 where_clause,
             )
             args = join_args + (full_query, exact_query, prefix_query, limit + 1)
-        elif isinstance(self.database_engine, Sqlite3Engine):
+        else:
             search_query = _parse_query_sqlite(search_term)
 
             sql = """
@@ -790,9 +787,6 @@ class UserDirectoryStore(UserDirectoryBackgroundUpdateStore):
                 where_clause,
             )
             args = join_args + (search_query, limit + 1)
-        else:
-            # This should be unreachable.
-            raise Exception("Unrecognized database engine")
 
         results = yield self.db.execute(
             "search_user_dir", self.db.cursor_to_dict, sql, *args

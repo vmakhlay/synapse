@@ -47,10 +47,8 @@ def run_create(cur, database_engine, *args, **kwargs):
     if isinstance(database_engine, PostgresEngine):
         for statement in get_statements(POSTGRES_TABLE.splitlines()):
             cur.execute(statement)
-    elif isinstance(database_engine, Sqlite3Engine):
-        cur.execute(SQLITE_TABLE)
     else:
-        raise Exception("Unrecognized database engine")
+        cur.execute(SQLITE_TABLE)
 
     cur.execute("SELECT MIN(stream_ordering) FROM events")
     rows = cur.fetchall()

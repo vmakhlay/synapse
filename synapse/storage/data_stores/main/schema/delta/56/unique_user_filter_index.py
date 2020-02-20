@@ -1,6 +1,6 @@
 import logging
 
-from synapse.storage.engines import PostgresEngine
+from synapse.storage.engines import PostgresEngine, MSSqlEngine
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,8 @@ def run_create(cur, database_engine, *args, **kwargs):
         select_clause,
     )
 
-    if isinstance(database_engine, PostgresEngine):
+    if isinstance(database_engine, PostgresEngine) \
+            or isinstance(database_engine, MSSqlEngine):
         cur.execute(sql)
     else:
         cur.executescript(sql)
