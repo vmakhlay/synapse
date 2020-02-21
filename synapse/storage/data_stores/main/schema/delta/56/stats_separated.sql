@@ -60,7 +60,7 @@ INSERT INTO stats_incremental_position (
 -- only holds absolute fields
 DROP TABLE IF EXISTS room_stats_current;
 CREATE TABLE room_stats_current (
-    room_id TEXT NOT NULL PRIMARY KEY,
+    room_id NVARCHAR(4000) NOT NULL PRIMARY KEY,
 
     -- These are absolute counts
     current_state_events INT NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE room_stats_current (
 -- represents HISTORICAL room statistics for a room
 DROP TABLE IF EXISTS room_stats_historical;
 CREATE TABLE room_stats_historical (
-    room_id TEXT NOT NULL,
+    room_id NVARCHAR(4000) NOT NULL,
     -- These stats cover the time from (end_ts - bucket_size)...end_ts (in ms).
     -- Note that end_ts is quantised.
     end_ts BIGINT NOT NULL,
@@ -107,7 +107,7 @@ CREATE INDEX room_stats_historical_end_ts ON room_stats_historical (end_ts);
 -- only holds absolute fields
 DROP TABLE IF EXISTS user_stats_current;
 CREATE TABLE user_stats_current (
-    user_id TEXT NOT NULL PRIMARY KEY,
+    user_id NVARCHAR(4000) NOT NULL PRIMARY KEY,
 
     joined_rooms BIGINT NOT NULL,
 
@@ -118,7 +118,7 @@ CREATE TABLE user_stats_current (
 -- represents HISTORICAL statistics for a user
 DROP TABLE IF EXISTS user_stats_historical;
 CREATE TABLE user_stats_historical (
-    user_id TEXT NOT NULL,
+    user_id NVARCHAR(4000) NOT NULL,
     end_ts BIGINT NOT NULL,
     bucket_size BIGINT NOT NULL,
 
@@ -137,7 +137,7 @@ CREATE INDEX user_stats_historical_end_ts ON user_stats_historical (end_ts);
 
 
 CREATE TABLE room_stats_state (
-    room_id TEXT NOT NULL,
+    room_id NVARCHAR(4000) NOT NULL,
     name TEXT,
     canonical_alias TEXT,
     join_rules TEXT,
@@ -145,7 +145,7 @@ CREATE TABLE room_stats_state (
     encryption TEXT,
     avatar TEXT,
     guest_access TEXT,
-    is_federatable BOOLEAN,
+    is_federatable BIT,
     topic TEXT
 );
 

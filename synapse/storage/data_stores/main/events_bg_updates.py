@@ -504,7 +504,7 @@ class EventsBackgroundUpdatesStore(SQLBaseStore):
                 """
                 UPDATE event_json
                 SET
-                    json = convert_from(json::bytea, 'utf8')
+                    json = convert_from(json::VARBINARY(4000), 'utf8')
                 FROM redactions
                 WHERE
                     redactions.have_censored

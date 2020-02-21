@@ -15,13 +15,26 @@
 
 -- room_id and topoligical_ordering are denormalised from the events table in order to
 -- make the index work.
-CREATE TABLE IF NOT EXISTS event_labels (
-    event_id TEXT,
-    label TEXT,
-    room_id TEXT NOT NULL,
-    topological_ordering BIGINT NOT NULL,
-    PRIMARY KEY(event_id, label)
-);
+-- CREATE TABLE IF NOT EXISTS event_labels (
+--     event_id TEXT,
+--     label TEXT,
+--     room_id TEXT NOT NULL,
+--     topological_ordering BIGINT NOT NULL,
+--     PRIMARY KEY(event_id, label)
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'event_labels'
+   )
+   CREATE TABLE event_labels (
+        event_id NVARCHAR(4000),
+        label NVARCHAR(4000),
+        room_id NVARCHAR(4000) NOT NULL,
+        topological_ordering BIGINT NOT NULL,
+        PRIMARY KEY(event_id, label)
+   );
 
 
 -- This index enables an event pagination looking for a particular label to index the

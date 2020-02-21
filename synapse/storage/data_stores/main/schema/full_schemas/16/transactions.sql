@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS received_transactions(
     origin TEXT,
     ts BIGINT,
     response_code INTEGER,
-    response_json bytea,
+    response_json VARBINARY(4000),
     has_been_referenced smallint default 0, -- Whether thishas been referenced by a prev_tx
     UNIQUE (transaction_id, origin)
 );

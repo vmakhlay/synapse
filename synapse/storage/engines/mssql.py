@@ -35,7 +35,7 @@ class MSSqlEngine(object):
         """
 
     def convert_param_style(self, sql):
-        return sql.replace("?", "%s")
+        return sql.replace("%s", "?")
 
     def on_new_connection(self, db_conn):
         pass

@@ -21,6 +21,6 @@ CREATE TABLE IF NOT EXISTS server_signature_keys(
   key_id TEXT, -- Key version.
   from_server TEXT, -- Which key server the key was fetched form.
   ts_added_ms BIGINT, -- When the key was added.
-  verify_key bytea, -- NACL verification key.
+  verify_key VARBINARY(4000), -- NACL verification key.
   UNIQUE (server_name, key_id)
 );

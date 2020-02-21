@@ -22,16 +22,32 @@
  * replace the old table with the new table.
  */
 
-CREATE TABLE IF NOT EXISTS devices2 (
-    user_id TEXT NOT NULL,
-    device_id TEXT NOT NULL,
-    display_name TEXT,
-    last_seen BIGINT,
-    ip TEXT,
-    user_agent TEXT,
-    hidden BOOLEAN DEFAULT 0,
-    CONSTRAINT device_uniqueness UNIQUE (user_id, device_id)
-);
+-- CREATE TABLE IF NOT EXISTS devices2 (
+--     user_id TEXT NOT NULL,
+--     device_id TEXT NOT NULL,
+--     display_name TEXT,
+--     last_seen BIGINT,
+--     ip TEXT,
+--     user_agent TEXT,
+--     hidden BOOLEAN DEFAULT 0,
+--     CONSTRAINT device_uniqueness UNIQUE (user_id, device_id)
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'devices2'
+   )
+   CREATE TABLE devices2 (
+        user_id NVARCHAR(4000) NOT NULL,
+        device_id NVARCHAR(4000) NOT NULL,
+        display_name TEXT,
+        last_seen BIGINT,
+        ip TEXT,
+        user_agent TEXT,
+        hidden BIT DEFAULT 0,
+        CONSTRAINT device_uniqueness_1 UNIQUE (user_id, device_id)
+   );
 
 INSERT INTO devices2 SELECT * FROM devices;
 
@@ -39,4 +55,6 @@ UPDATE devices2 SET hidden = 0 WHERE hidden = 'FALSE';
 
 DROP TABLE devices;
 
-ALTER TABLE devices2 RENAME TO devices;
+exec sp_rename 'devices2', 'devices';
+
+-- ALTER TABLE devices2 RENAME TO devices;

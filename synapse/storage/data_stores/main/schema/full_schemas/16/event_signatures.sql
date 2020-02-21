@@ -20,7 +20,7 @@
 CREATE TABLE IF NOT EXISTS event_reference_hashes (
     event_id TEXT,
     algorithm TEXT,
-    hash bytea,
+    hash VARBINARY(4000),
     UNIQUE (event_id, algorithm)
 );
 
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS event_signatures (
     event_id TEXT,
     signature_name TEXT,
     key_id TEXT,
-    signature bytea,
+    signature VARBINARY(4000),
     UNIQUE (event_id, signature_name, key_id)
 );
 

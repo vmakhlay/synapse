@@ -82,8 +82,12 @@ def make_pool(
     """Get the connection pool for the database.
     """
 
+    name = db_config.config["name"]
+    if name == "mssql":
+        name = 'pyodbc'
+
     return adbapi.ConnectionPool(
-        db_config.config["name"],
+        name,
         cp_reactor=reactor,
         cp_openfun=engine.on_new_connection,
         **db_config.config.get("args", {})

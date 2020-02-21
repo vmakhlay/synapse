@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-ALTER TABLE redactions ADD COLUMN received_ts BIGINT;
+ALTER TABLE redactions ADD received_ts BIGINT;
 
 INSERT INTO background_updates (update_name, progress_json) VALUES
   ('redactions_received_ts', '{}');

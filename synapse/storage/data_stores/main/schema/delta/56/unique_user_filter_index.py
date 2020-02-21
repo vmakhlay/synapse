@@ -19,32 +19,33 @@ def run_upgrade(cur, database_engine, *args, **kwargs):
 
 
 def run_create(cur, database_engine, *args, **kwargs):
-    if isinstance(database_engine, PostgresEngine):
-        select_clause = """
-            SELECT DISTINCT ON (user_id, filter_id) user_id, filter_id, filter_json
-            FROM user_filters
-        """
-    else:
-        select_clause = """
-            SELECT * FROM user_filters GROUP BY user_id, filter_id
-        """
+    # if isinstance(database_engine, PostgresEngine):
+    #     select_clause = """
+    #         SELECT DISTINCT ON (user_id, filter_id) user_id, filter_id, filter_json
+    #         FROM user_filters
+    #     """
+    # elif isinstance(database_engine, MSSqlEngine):
+    #     select_clause = """
+    #         SELECT DISTINCT user_id, filter_id user_id, filter_id, filter_json
+    #         FROM user_filters
+    #     """
+    # else:
+    #     select_clause = """
+    #         SELECT * FROM user_filters GROUP BY user_id, filter_id
+    #     """
     sql = """
             DROP TABLE IF EXISTS user_filters_migration;
-            DROP INDEX IF EXISTS user_filters_unique;
+            DROP INDEX IF EXISTS user_filters_unique ON user_filters_migration;
             CREATE TABLE user_filters_migration (
-                user_id TEXT NOT NULL,
+                user_id NVARCHAR(4000) NOT NULL,
                 filter_id BIGINT NOT NULL,
-                filter_json BYTEA NOT NULL
+                filter_json VARBINARY(4000) NOT NULL
             );
-            INSERT INTO user_filters_migration (user_id, filter_id, filter_json)
-                %s;
             CREATE UNIQUE INDEX user_filters_unique ON user_filters_migration
                 (user_id, filter_id);
             DROP TABLE user_filters;
-            ALTER TABLE user_filters_migration RENAME TO user_filters;
-        """ % (
-        select_clause,
-    )
+            exec sp_rename 'user_filters_migration', 'user_filters';
+        """
 
     if isinstance(database_engine, PostgresEngine) \
             or isinstance(database_engine, MSSqlEngine):

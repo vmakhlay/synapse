@@ -22,8 +22,8 @@ CREATE TABLE state_groups (
 CREATE TABLE state_groups_state (
     state_group BIGINT NOT NULL,
     room_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    state_key TEXT NOT NULL,
+    type NVARCHAR(4000) NOT NULL,
+    state_key NVARCHAR(4000) NOT NULL,
     event_id TEXT NOT NULL
 );
 

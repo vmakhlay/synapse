@@ -18,14 +18,28 @@
 -- the room's retention policy state event.
 -- If a room doesn't have a retention policy state event in its state, both max_lifetime
 -- and min_lifetime are NULL.
-CREATE TABLE IF NOT EXISTS room_retention(
-    room_id TEXT,
-    event_id TEXT,
-    min_lifetime BIGINT,
-    max_lifetime BIGINT,
+-- CREATE TABLE IF NOT EXISTS room_retention(
+--     room_id TEXT,
+--     event_id TEXT,
+--     min_lifetime BIGINT,
+--     max_lifetime BIGINT,
+--
+--     PRIMARY KEY(room_id, event_id)
+-- );
 
-    PRIMARY KEY(room_id, event_id)
-);
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'room_retention'
+   )
+   CREATE TABLE room_retention (
+        room_id NVARCHAR(4000),
+        event_id NVARCHAR(4000),
+        min_lifetime BIGINT,
+        max_lifetime BIGINT,
+
+        PRIMARY KEY(room_id, event_id)
+   );
 
 CREATE INDEX room_retention_max_lifetime_idx on room_retention(max_lifetime);
 

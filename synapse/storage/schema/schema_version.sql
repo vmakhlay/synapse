@@ -33,19 +33,35 @@
 --     UNIQUE(module_name, file)
 -- );
 
-
-IF OBJECT_ID(N'dbo.schema_version', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'schema_version'
+   )
+   CREATE TABLE schema_version (
         Lock CHAR(1) NOT NULL DEFAULT 'X' UNIQUE,
         version INTEGER NOT NULL,
         upgraded BIT NOT NULL,
-        CHECK (Lock='X')); END;
+        CHECK (Lock='X'));
 
-IF OBJECT_ID(N'dbo.applied_schema_deltas', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'applied_schema_deltas'
+   )
+   CREATE TABLE applied_schema_deltas (
         version INTEGER NOT NULL,
-        file TEXT NOT NULL,
-        UNIQUE(version, file)); END;
+        [file] NVARCHAR(4000) NOT NULL,
+        UNIQUE(version, [file]));
 
-IF OBJECT_ID(N'dbo.applied_module_schemas', N'U') IS NULL BEGIN CREATE TABLE dbo.schema_version (
-        module_name TEXT NOT NULL,
-        file TEXT NOT NULL,
-        UNIQUE(module_name, file)); END;
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'applied_module_schemas'
+   )
+   CREATE TABLE applied_module_schemas (
+        module_name NVARCHAR(4000) NOT NULL,
+        [file] NVARCHAR(4000) NOT NULL,
+        UNIQUE(module_name, [file]));
+

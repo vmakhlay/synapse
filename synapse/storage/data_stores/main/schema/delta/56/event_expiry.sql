@@ -13,9 +13,19 @@
  * limitations under the License.
  */
 
-CREATE TABLE IF NOT EXISTS event_expiry (
-    event_id TEXT PRIMARY KEY,
-    expiry_ts BIGINT NOT NULL
-);
+-- CREATE TABLE IF NOT EXISTS event_expiry (
+--     event_id TEXT PRIMARY KEY,
+--     expiry_ts BIGINT NOT NULL
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'event_expiry'
+   )
+   CREATE TABLE event_expiry (
+        event_id NVARCHAR(4000) PRIMARY KEY,
+        expiry_ts BIGINT NOT NULL
+   );
 
 CREATE INDEX event_expiry_expiry_ts_idx ON event_expiry(expiry_ts);

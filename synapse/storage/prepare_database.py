@@ -407,7 +407,7 @@ def _upgrade_existing_database(
             # Mark as done.
             cur.execute(
                 database_engine.convert_param_style(
-                    "INSERT INTO applied_schema_deltas (version, file) VALUES (?,?)"
+                    "INSERT INTO applied_schema_deltas (version, [file]) VALUES (?,?)"
                 ),
                 (v, relative_path),
             )
@@ -543,7 +543,7 @@ def _get_or_create_schema_state(txn, database_engine):
     if current_version:
         txn.execute(
             database_engine.convert_param_style(
-                "SELECT file FROM applied_schema_deltas WHERE version >= ?"
+                "SELECT [file] FROM applied_schema_deltas WHERE version >= ?"
             ),
             (current_version,),
         )

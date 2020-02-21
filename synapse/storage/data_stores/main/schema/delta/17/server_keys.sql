@@ -13,12 +13,25 @@
  * limitations under the License.
  */
 
-CREATE TABLE IF NOT EXISTS server_keys_json (
-    server_name TEXT, -- Server name.
-    key_id TEXT, -- Requested key id.
-    from_server TEXT, -- Which server the keys were fetched from.
-    ts_added_ms INTEGER, -- When the keys were fetched
-    ts_valid_until_ms INTEGER, -- When this version of the keys exipires.
-    key_json bytea, -- JSON certificate for the remote server.
-    CONSTRAINT uniqueness UNIQUE (server_name, key_id, from_server)
-);
+-- CREATE TABLE IF NOT EXISTS server_keys_json (
+--     server_name TEXT, -- Server name.
+--     key_id TEXT, -- Requested key id.
+--     from_server TEXT, -- Which server the keys were fetched from.
+--     ts_added_ms INTEGER, -- When the keys were fetched
+--     ts_valid_until_ms INTEGER, -- When this version of the keys exipires.
+--     key_json bytea, -- JSON certificate for the remote server.
+--     CONSTRAINT uniqueness UNIQUE (server_name, key_id, from_server)
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'server_keys_json'
+   )
+   CREATE TABLE server_keys_json (server_name NVARCHAR(4000),
+    key_id NVARCHAR(4000),
+    from_server NVARCHAR(4000),
+    ts_added_ms INTEGER,
+    ts_valid_until_ms INTEGER,
+    key_json VARBINARY(4000),
+    CONSTRAINT uniqueness UNIQUE (server_name, key_id, from_server));

@@ -18,5 +18,6 @@
  * index was unique, so delete it if it's there and create a new non-unique
  * index. */
 
-DROP INDEX IF EXISTS e2e_cross_signing_signatures_idx; CREATE INDEX IF NOT
-EXISTS e2e_cross_signing_signatures2_idx ON e2e_cross_signing_signatures(user_id, target_user_id, target_device_id);
+DROP INDEX IF EXISTS e2e_cross_signing_signatures_idx on e2e_cross_signing_signatures;
+IF NOT EXISTS(SELECT * FROM sys.indexes WHERE Name = 'e2e_cross_signing_signatures2_idx')
+    CREATE Index e2e_cross_signing_signatures2_idx ON e2e_cross_signing_signatures(user_id, target_user_id, target_device_id);

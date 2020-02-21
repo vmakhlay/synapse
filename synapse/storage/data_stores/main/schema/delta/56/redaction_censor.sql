@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-ALTER TABLE redactions ADD COLUMN have_censored BOOL NOT NULL DEFAULT false;
+ALTER TABLE redactions ADD have_censored BIT NOT NULL DEFAULT 'FALSE';

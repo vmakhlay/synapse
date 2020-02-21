@@ -12,20 +12,46 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-CREATE TABLE IF NOT EXISTS threepid_validation_session (
-    session_id TEXT PRIMARY KEY,
-    medium TEXT NOT NULL,
-    address TEXT NOT NULL,
-    client_secret TEXT NOT NULL,
-    last_send_attempt BIGINT NOT NULL,
-    validated_at BIGINT
-);
+-- CREATE TABLE IF NOT EXISTS threepid_validation_session (
+--     session_id TEXT PRIMARY KEY,
+--     medium TEXT NOT NULL,
+--     address TEXT NOT NULL,
+--     client_secret TEXT NOT NULL,
+--     last_send_attempt BIGINT NOT NULL,
+--     validated_at BIGINT
+-- );
 
-CREATE TABLE IF NOT EXISTS threepid_validation_token (
-    token TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    next_link TEXT,
-    expires BIGINT NOT NULL
-);
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'threepid_validation_session'
+   )
+   CREATE TABLE threepid_validation_session (
+        session_id NVARCHAR(4000) PRIMARY KEY,
+        medium TEXT NOT NULL,
+        address TEXT NOT NULL,
+        client_secret TEXT NOT NULL,
+        last_send_attempt BIGINT NOT NULL,
+        validated_at BIGINT
+   );
+
+-- CREATE TABLE IF NOT EXISTS threepid_validation_token (
+--     token TEXT PRIMARY KEY,
+--     session_id TEXT NOT NULL,
+--     next_link TEXT,
+--     expires BIGINT NOT NULL
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'threepid_validation_token'
+   )
+   CREATE TABLE threepid_validation_token (
+        token NVARCHAR(4000) PRIMARY KEY,
+        session_id NVARCHAR(4000) NOT NULL,
+        next_link TEXT,
+        expires BIGINT NOT NULL
+   );
 
 CREATE INDEX threepid_validation_token_session_id ON threepid_validation_token(session_id);

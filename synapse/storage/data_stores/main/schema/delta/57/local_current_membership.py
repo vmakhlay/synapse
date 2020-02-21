@@ -83,8 +83,8 @@ def run_create(cur, database_engine, *args, **kwargs):
     cur.execute(
         """
         CREATE TABLE local_current_membership (
-            room_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
+            room_id NVARCHAR(4000) NOT NULL,
+            user_id NVARCHAR(4000) NOT NULL,
             event_id TEXT NOT NULL,
             membership TEXT NOT NULL
         )"""

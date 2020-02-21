@@ -61,8 +61,8 @@ CREATE UNIQUE INDEX user_directory_search_user_idx ON user_directory_search(user
 
 
 SQLITE_TABLE = """
-CREATE VIRTUAL TABLE user_directory_search
-    USING fts4 ( user_id, value );
+CREATE TABLE user_directory_search
+    ( user_id, value );
 """
 
 

@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-DROP INDEX IF EXISTS redactions_have_censored;
+DROP INDEX IF EXISTS redactions_have_censored ON redactions;

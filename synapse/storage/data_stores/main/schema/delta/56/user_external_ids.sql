@@ -16,9 +16,21 @@
 /*
  * a table which records mappings from external auth providers to mxids
  */
-CREATE TABLE IF NOT EXISTS user_external_ids (
-    auth_provider TEXT NOT NULL,
-    external_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    UNIQUE (auth_provider, external_id)
-);
+-- CREATE TABLE IF NOT EXISTS user_external_ids (
+--     auth_provider TEXT NOT NULL,
+--     external_id TEXT NOT NULL,
+--     user_id TEXT NOT NULL,
+--     UNIQUE (auth_provider, external_id)
+-- );
+
+IF NOT EXISTS
+   (  SELECT [name]
+      FROM sys.tables
+      WHERE [name] = 'user_external_ids'
+   )
+   CREATE TABLE user_external_ids (
+        auth_provider NVARCHAR(4000) NOT NULL,
+        external_id NVARCHAR(4000) NOT NULL,
+        user_id TEXT NOT NULL,
+        UNIQUE (auth_provider, external_id)
+   );

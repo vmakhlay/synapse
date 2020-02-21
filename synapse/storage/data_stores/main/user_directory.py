@@ -65,16 +65,26 @@ class UserDirectoryBackgroundUpdateStore(StateDeltasStore):
         # Get all the rooms that we want to process.
         def _make_staging_area(txn):
             sql = (
-                "CREATE TABLE IF NOT EXISTS "
-                + TEMP_TABLE
-                + "_rooms(room_id TEXT NOT NULL, events BIGINT NOT NULL)"
+                '''IF NOT EXISTS
+                   (  SELECT [name]
+                      FROM sys.tables
+                      WHERE [name] ="''' + TEMP_TABLE + '''_rooms"  
+                   )
+                   CREATE TABLE ''' + TEMP_TABLE + '''_rooms (
+                       room_id TEXT NOT NULL, events BIGINT NOT NULL
+                   );'''
             )
             txn.execute(sql)
 
             sql = (
-                "CREATE TABLE IF NOT EXISTS "
-                + TEMP_TABLE
-                + "_position(position TEXT NOT NULL)"
+                '''IF NOT EXISTS
+                   (  SELECT [name]
+                      FROM sys.tables
+                      WHERE [name] ="''' + TEMP_TABLE + '''_position"  
+                               )
+                               CREATE TABLE ''' + TEMP_TABLE + '''_position (
+                                   position TEXT NOT NULL
+                               );'''
             )
             txn.execute(sql)
 
@@ -91,9 +101,14 @@ class UserDirectoryBackgroundUpdateStore(StateDeltasStore):
             # If search all users is on, get all the users we want to add.
             if self.hs.config.user_directory_search_all_users:
                 sql = (
-                    "CREATE TABLE IF NOT EXISTS "
-                    + TEMP_TABLE
-                    + "_users(user_id TEXT NOT NULL)"
+                    '''IF NOT EXISTS
+                       (  SELECT [name]
+                          FROM sys.tables
+                          WHERE [name] ="''' + TEMP_TABLE + '''_users" 
+                       )
+                       CREATE TABLE ''' + TEMP_TABLE + '''_users (
+                           user_id TEXT NOT NULL
+                       );'''
                 )
                 txn.execute(sql)
 
