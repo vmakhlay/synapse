@@ -445,13 +445,12 @@ class EventsBackgroundUpdatesStore(SQLBaseStore):
         def _redactions_received_ts_txn(txn):
             # Fetch the set of event IDs that we want to update
             sql = """
-                SELECT event_id FROM redactions
+                SELECT TOP {} event_id FROM redactions
                 WHERE event_id > ?
                 ORDER BY event_id ASC
-                LIMIT ?
-            """
+            """.format(batch_size)
 
-            txn.execute(sql, (last_event_id, batch_size))
+            txn.execute(sql, (last_event_id, ))
 
             rows = txn.fetchall()
             if not rows:
@@ -525,20 +524,20 @@ class EventsBackgroundUpdatesStore(SQLBaseStore):
 
     @defer.inlineCallbacks
     def _event_store_labels(self, progress, batch_size):
-        """Background update handler which will store labels for existing events."""
+        """Background update handler which will store
+        labels for existing events."""
         last_event_id = progress.get("last_event_id", "")
 
         def _event_store_labels_txn(txn):
-            txn.execute(
-                """
-                SELECT event_id, json FROM event_json
-                LEFT JOIN event_labels USING (event_id)
-                WHERE event_id > ? AND label IS NULL
-                ORDER BY event_id LIMIT ?
-                """,
-                (last_event_id, batch_size),
-            )
-
+            sql = """
+                SELECT TOP {} event_json.event_id, event_json.json 
+                FROM event_json
+                LEFT JOIN event_labels ON 
+                (event_json.event_id = event_labels.event_id) 
+                WHERE (event_json.event_id > ? AND event_labels.label IS NULL)
+                ORDER BY event_id
+                """.format(batch_size)
+            txn.execute(sql, (last_event_id,))
             results = list(txn)
 
             nbrows = 0

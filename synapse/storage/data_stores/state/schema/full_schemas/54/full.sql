@@ -15,8 +15,8 @@
 
 CREATE TABLE state_groups (
     id BIGINT PRIMARY KEY,
-    room_id TEXT NOT NULL,
-    event_id TEXT NOT NULL
+    room_id NVARCHAR(4000) NOT NULL,
+    event_id NVARCHAR(4000) NOT NULL
 );
 
 CREATE TABLE state_groups_state (

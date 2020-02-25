@@ -304,34 +304,41 @@ class ClientIpBackgroundUpdateStore(SQLBaseStore):
             #      times, which is fine.
 
             if self.database_engine.supports_tuple_comparison:
-                where_clause = "(user_id, device_id) > (?, ?)"
+                where_clause = "(devices.user_id, devices.device_id) > (?, ?)"
                 where_args = [last_user_id, last_device_id]
             else:
                 # We explicitly do a `user_id >= ? AND (...)` here to ensure
                 # that an index is used, as doing `user_id > ? OR (user_id = ? AND ...)`
                 # makes it hard for query optimiser to tell that it can use the
                 # index on user_id
-                where_clause = "user_id >= ? AND (user_id > ? OR device_id > ?)"
+                where_clause = "devices.user_id >= ? AND (devices.user_id > ? OR devices.device_id > ?)"
                 where_args = [last_user_id, last_user_id, last_device_id]
 
             sql = """
                 SELECT
-                    last_seen, ip, user_agent, user_id, device_id
+                    c.last_seen, u.ip, u.user_agent, u.user_id,u.device_id
                 FROM (
-                    SELECT
-                        user_id, device_id, MAX(u.last_seen) AS last_seen
+                    SELECT TOP %(limit)s 
+                        devices.user_id, 
+                        devices.device_id, 
+                        MAX(u.last_seen) AS last_seen
                     FROM devices
-                    INNER JOIN user_ips AS u USING (user_id, device_id)
+                    INNER JOIN user_ips AS u 
+                    ON (devices.user_id = u.user_id 
+                        AND devices.device_id = u.device_id)
                     WHERE %(where_clause)s
-                    GROUP BY user_id, device_id
-                    ORDER BY user_id ASC, device_id ASC
-                    LIMIT ?
+                    GROUP BY devices.user_id, devices.device_id
+                    ORDER BY devices.user_id ASC, devices.device_id ASC
                 ) c
-                INNER JOIN user_ips AS u USING (user_id, device_id, last_seen)
+                INNER JOIN user_ips AS u 
+                ON (c.user_id = u.user_id 
+                AND c.device_id = u.device_id 
+                AND c.last_seen = u.last_seen)
             """ % {
-                "where_clause": where_clause
+                "where_clause": where_clause,
+                "limit": batch_size
             }
-            txn.execute(sql, where_args + [batch_size])
+            txn.execute(sql, where_args)
 
             rows = txn.fetchall()
             if not rows:

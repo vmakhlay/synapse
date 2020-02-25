@@ -770,15 +770,14 @@ class RoomBackgroundUpdateStore(SQLBaseStore):
         def _background_insert_retention_txn(txn):
             txn.execute(
                 """
-                SELECT state.room_id, state.event_id, events.json
+                SELECT TOP {} state.room_id, state.event_id, events.json
                 FROM current_state_events as state
                 LEFT JOIN event_json AS events ON (state.event_id = events.event_id)
                 WHERE state.room_id > ? AND state.type = '%s'
-                ORDER BY state.room_id ASC
-                LIMIT ?;
-                """
+                ORDER BY state.room_id ASC;
+                """.format(batch_size)
                 % EventTypes.Retention,
-                (last_room, batch_size),
+                (last_room, ),
             )
 
             rows = self.db.cursor_to_dict(txn)
@@ -835,14 +834,17 @@ class RoomBackgroundUpdateStore(SQLBaseStore):
 
         def _background_add_rooms_room_version_column_txn(txn: LoggingTransaction):
             sql = """
-                SELECT room_id, json FROM current_state_events
-                INNER JOIN event_json USING (room_id, event_id)
-                WHERE room_id > ? AND type = 'm.room.create' AND state_key = ''
-                ORDER BY room_id
-                LIMIT ?
-            """
+                SELECT TOP {} current_state_events.room_id, event_json.json 
+                FROM current_state_events
+                INNER JOIN event_json
+                ON (current_state_events.room_id=event_json.room_id AND current_state_events.event_id=event_json.event_id)
+                WHERE (current_state_events.room_id > ? 
+                       AND current_state_events.type = 'm.room.create' 
+                       AND current_state_events.state_key = '')
+                ORDER BY current_state_events.room_id
+            """.format(batch_size)
 
-            txn.execute(sql, (last_room_id, batch_size))
+            txn.execute(sql, (last_room_id,))
 
             updates = []
             for room_id, event_json in txn:
@@ -905,16 +907,16 @@ class RoomBackgroundUpdateStore(SQLBaseStore):
         def _get_rooms(txn):
             txn.execute(
                 """
-                SELECT room_id
+                SELECT TOP {} r.room_id
                 FROM rooms r
-                INNER JOIN current_state_events cse USING (room_id)
-                WHERE room_id > ? AND r.is_public
+                INNER JOIN current_state_events cse ON
+                (r.room_id = cse.room_id) 
+                WHERE r.room_id > ? AND r.is_public = 1
                 AND cse.type = '%s' AND cse.state_key = ''
-                ORDER BY room_id ASC
-                LIMIT ?;
-                """
+                ORDER BY r.room_id ASC;
+                """.format(batch_size)
                 % EventTypes.Tombstone,
-                (last_room, batch_size),
+                (last_room,),
             )
 
             return [row[0] for row in txn]

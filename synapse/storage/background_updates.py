@@ -370,8 +370,9 @@ class BackgroundUpdater(object):
             # down at the wrong moment - hance we use IF NOT EXISTS. (SQLite
             # has supported CREATE TABLE|INDEX IF NOT EXISTS since 3.3.0.)
             sql = (
-                "CREATE %(unique)s INDEX IF NOT EXISTS %(name)s ON %(table)s"
-                " (%(columns)s)"
+                "IF NOT EXISTS(SELECT * FROM sys.indexes WHERE Name = '%(name)s') "
+                "CREATE %(unique)s INDEX %(name)s ON %(table)s"
+                " (%(columns)s);"
             ) % {
                 "unique": "UNIQUE" if unique else "",
                 "name": index_name,

@@ -50,10 +50,6 @@ class MSSqlEngine(object):
 
     @property
     def supports_tuple_comparison(self):
-        """
-        Do we support comparing tuples, i.e. `(a, b) > (c, d)`? This requires
-        SQLite 3.15+.
-        """
         return False
 
     @property

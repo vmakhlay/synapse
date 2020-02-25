@@ -259,19 +259,22 @@ class EventsStore(
 
         def _get_events_which_are_prevs_txn(txn, batch):
             sql = """
-            SELECT prev_event_id, internal_metadata
+            SELECT event_edges.prev_event_id, event_json.internal_metadata
             FROM event_edges
-                INNER JOIN events USING (event_id)
-                LEFT JOIN rejections USING (event_id)
-                LEFT JOIN event_json USING (event_id)
+                INNER JOIN events 
+                ON (event_edges.event_id=events.event_id)
+                LEFT JOIN rejections 
+                ON (events.event_id=rejections.event_id) 
+                LEFT JOIN event_json 
+                ON (events.event_id = event_json.event_id) 
             WHERE
-                NOT events.outlier
+                events.outlier = 0
                 AND rejections.event_id IS NULL
-                AND
+                AND 
             """
 
             clause, args = make_in_list_sql_clause(
-                self.database_engine, "prev_event_id", batch
+                self.database_engine, "event_edges.prev_event_id", batch
             )
 
             txn.execute(sql + clause, args)

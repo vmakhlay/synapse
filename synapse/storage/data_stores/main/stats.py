@@ -110,12 +110,11 @@ class StatsStore(StateDeltasStore):
 
         def _get_next_batch(txn):
             sql = """
-                    SELECT DISTINCT name FROM users
+                    SELECT DISTINCT TOP {} name FROM users
                     WHERE name > ?
                     ORDER BY name ASC
-                    LIMIT ?
-                """
-            txn.execute(sql, (last_user_id, batch_size))
+                """.format(batch_size)
+            txn.execute(sql, (last_user_id,))
             return [r for r, in txn]
 
         users_to_work_on = yield self.db.runInteraction(
@@ -153,12 +152,11 @@ class StatsStore(StateDeltasStore):
 
         def _get_next_batch(txn):
             sql = """
-                    SELECT DISTINCT room_id FROM current_state_events
+                    SELECT DISTINCT TOP {} room_id FROM current_state_events
                     WHERE room_id > ?
                     ORDER BY room_id ASC
-                    LIMIT ?
-                """
-            txn.execute(sql, (last_room_id, batch_size))
+                """.format(batch_size)
+            txn.execute(sql, (last_room_id,))
             return [r for r, in txn]
 
         rooms_to_work_on = yield self.db.runInteraction(
@@ -682,11 +680,13 @@ class StatsStore(StateDeltasStore):
         if isinstance(self.database_engine, PostgresEngine):
             new_bytes_expression = "OCTET_LENGTH(json)"
         else:
-            new_bytes_expression = "LENGTH(CAST(json AS BLOB))"
+            new_bytes_expression = "LENGTH(CAST(json AS VARBINARY(4000)))"
 
         sql = """
             SELECT events.room_id, COUNT(*) AS new_events, SUM(%s) AS new_bytes
-            FROM events INNER JOIN event_json USING (event_id)
+            FROM events 
+            INNER JOIN event_json 
+            ON (events.event_id=event_json.event_id) 
             WHERE (? < stream_ordering AND stream_ordering <= ?)
                 OR (? <= stream_ordering AND stream_ordering <= ?)
             GROUP BY events.room_id

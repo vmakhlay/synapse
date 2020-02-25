@@ -14,12 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import atexit
 import hashlib
 import os
-import time
-import uuid
-import warnings
 from inspect import getcallargs
 
 from mock import Mock, patch
@@ -38,70 +34,30 @@ from synapse.http.server import HttpServer
 from synapse.logging.context import LoggingContext
 from synapse.server import HomeServer
 from synapse.storage import DataStore
-from synapse.storage.engines import PostgresEngine, create_engine
+from synapse.storage.engines import create_engine
 from synapse.storage.prepare_database import prepare_database
 from synapse.util.ratelimitutils import FederationRateLimiter
 
-# set this to True to run the tests against postgres instead of sqlite.
-#
-# When running under postgres, we first create a base database with the name
-# POSTGRES_BASE_DB and update it to the current schema. Then, for each test case, we
-# create another unique database, using the base database as a template.
-USE_POSTGRES_FOR_TESTS = os.environ.get("SYNAPSE_POSTGRES", False)
-LEAVE_DB = os.environ.get("SYNAPSE_LEAVE_DB", False)
-POSTGRES_USER = os.environ.get("SYNAPSE_POSTGRES_USER", None)
-POSTGRES_HOST = os.environ.get("SYNAPSE_POSTGRES_HOST", None)
-POSTGRES_PASSWORD = os.environ.get("SYNAPSE_POSTGRES_PASSWORD", None)
-POSTGRES_BASE_DB = "_synapse_unit_tests_base_%s" % (os.getpid(),)
-
-# the dbname we will connect to in order to create the base database.
-POSTGRES_DBNAME_FOR_INITIAL_CREATE = "postgres"
+MSSQL_USER = os.environ.get("SYNAPSE_MSSQL_USER", "messenger")
+MSSQL_HOST = os.environ.get("SYNAPSE_MSSQL_HOST", None)
+MSSQL_PASSWORD = os.environ.get("SYNAPSE_MSSQL_PASSWORD", "messenger")
+MSSQL_BASE_DB = os.environ.get("MSSQL_BASE_DB", "messenger")
+MSSQL_DRIVER = os.environ.get("MSSQL_DRIVER", "ODBC Driver 17 for SQL Server")
 
 
 def setupdb():
-    # If we're using PostgreSQL, set up the db once
-    if USE_POSTGRES_FOR_TESTS:
-        # create a PostgresEngine
-        db_engine = create_engine({"name": "psycopg2", "args": {}})
+    db_engine = create_engine({"name": "mssql", "args": {}})
 
-        # connect to postgres to create the base database.
-        db_conn = db_engine.module.connect(
-            user=POSTGRES_USER,
-            host=POSTGRES_HOST,
-            password=POSTGRES_PASSWORD,
-            dbname=POSTGRES_DBNAME_FOR_INITIAL_CREATE,
-        )
-        db_conn.autocommit = True
-        cur = db_conn.cursor()
-        cur.execute("DROP DATABASE IF EXISTS %s;" % (POSTGRES_BASE_DB,))
-        cur.execute("CREATE DATABASE %s;" % (POSTGRES_BASE_DB,))
-        cur.close()
-        db_conn.close()
-
-        # Set up in the db
-        db_conn = db_engine.module.connect(
-            database=POSTGRES_BASE_DB,
-            user=POSTGRES_USER,
-            host=POSTGRES_HOST,
-            password=POSTGRES_PASSWORD,
-        )
-        prepare_database(db_conn, db_engine, None)
-        db_conn.close()
-
-        def _cleanup():
-            db_conn = db_engine.module.connect(
-                user=POSTGRES_USER,
-                host=POSTGRES_HOST,
-                password=POSTGRES_PASSWORD,
-                dbname=POSTGRES_DBNAME_FOR_INITIAL_CREATE,
-            )
-            db_conn.autocommit = True
-            cur = db_conn.cursor()
-            cur.execute("DROP DATABASE IF EXISTS %s;" % (POSTGRES_BASE_DB,))
-            cur.close()
-            db_conn.close()
-
-        atexit.register(_cleanup)
+    # Set up in the db
+    db_conn = db_engine.module.connect(
+        database=MSSQL_BASE_DB,
+        user=MSSQL_USER,
+        host=MSSQL_HOST,
+        password=MSSQL_PASSWORD,
+        driver=MSSQL_DRIVER,
+    )
+    prepare_database(db_conn, db_engine, None)
+    db_conn.close()
 
 
 def default_config(name, parse=False):
@@ -211,48 +167,19 @@ def setup_test_homeserver(
     if "clock" not in kargs:
         kargs["clock"] = MockClock()
 
-    if USE_POSTGRES_FOR_TESTS:
-        test_db = "synapse_test_%s" % uuid.uuid4().hex
-
-        database_config = {
-            "name": "psycopg2",
-            "args": {
-                "database": test_db,
-                "host": POSTGRES_HOST,
-                "password": POSTGRES_PASSWORD,
-                "user": POSTGRES_USER,
-                "cp_min": 1,
-                "cp_max": 5,
-            },
-        }
-    else:
-        database_config = {
-            "name": "sqlite3",
-            "args": {"database": ":memory:", "cp_min": 1, "cp_max": 1},
-        }
+    database_config = {
+        "name": "mssql",
+        "args": {
+            "database": MSSQL_BASE_DB,
+            "host": MSSQL_HOST,
+            "password": MSSQL_PASSWORD,
+            "user": MSSQL_USER,
+            "driver": MSSQL_DRIVER,
+        },
+    }
 
     database = DatabaseConnectionConfig("master", database_config)
     config.database.databases = [database]
-
-    db_engine = create_engine(database.config)
-
-    # Create the database before we actually try and connect to it, based off
-    # the template database we generate in setupdb()
-    if datastore is None and isinstance(db_engine, PostgresEngine):
-        db_conn = db_engine.module.connect(
-            database=POSTGRES_BASE_DB,
-            user=POSTGRES_USER,
-            host=POSTGRES_HOST,
-            password=POSTGRES_PASSWORD,
-        )
-        db_conn.autocommit = True
-        cur = db_conn.cursor()
-        cur.execute("DROP DATABASE IF EXISTS %s;" % (test_db,))
-        cur.execute(
-            "CREATE DATABASE %s WITH TEMPLATE %s;" % (test_db, POSTGRES_BASE_DB)
-        )
-        cur.close()
-        db_conn.close()
 
     if datastore is None:
         hs = homeserverToUse(
@@ -268,54 +195,6 @@ def setup_test_homeserver(
         hs.setup()
         if homeserverToUse.__name__ == "TestHomeServer":
             hs.setup_master()
-
-        if isinstance(db_engine, PostgresEngine):
-            database = hs.get_datastores().databases[0]
-
-            # We need to do cleanup on PostgreSQL
-            def cleanup():
-                import psycopg2
-
-                # Close all the db pools
-                database._db_pool.close()
-
-                dropped = False
-
-                # Drop the test database
-                db_conn = db_engine.module.connect(
-                    database=POSTGRES_BASE_DB,
-                    user=POSTGRES_USER,
-                    host=POSTGRES_HOST,
-                    password=POSTGRES_PASSWORD,
-                )
-                db_conn.autocommit = True
-                cur = db_conn.cursor()
-
-                # Try a few times to drop the DB. Some things may hold on to the
-                # database for a few more seconds due to flakiness, preventing
-                # us from dropping it when the test is over. If we can't drop
-                # it, warn and move on.
-                for x in range(5):
-                    try:
-                        cur.execute("DROP DATABASE IF EXISTS %s;" % (test_db,))
-                        db_conn.commit()
-                        dropped = True
-                    except psycopg2.OperationalError as e:
-                        warnings.warn(
-                            "Couldn't drop old db: " + str(e), category=UserWarning
-                        )
-                        time.sleep(0.5)
-
-                cur.close()
-                db_conn.close()
-
-                if not dropped:
-                    warnings.warn("Failed to drop old DB.", category=UserWarning)
-
-            if not LEAVE_DB:
-                # Register the cleanup hook
-                cleanup_func(cleanup)
-
     else:
         hs = homeserverToUse(
             name,

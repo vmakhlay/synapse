@@ -841,7 +841,7 @@ class RegistrationBackgroundUpdateStore(RegistrationWorkerStore):
         def _background_update_set_deactivated_flag_txn(txn):
             txn.execute(
                 """
-                SELECT
+                SELECT TOP {}
                     users.name,
                     COUNT(access_tokens.token) AS count_tokens,
                     COUNT(user_threepids.address) AS count_threepids
@@ -853,10 +853,9 @@ class RegistrationBackgroundUpdateStore(RegistrationWorkerStore):
                 AND users.is_guest = 0
                 AND users.name > ?
                 GROUP BY users.name
-                ORDER BY users.name ASC
-                LIMIT ?;
-                """,
-                (last_user, batch_size),
+                ORDER BY users.name ASC;
+                """.format(batch_size),
+                (last_user, ),
             )
 
             rows = self.db.cursor_to_dict(txn)

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 if six.PY2:
     db_binary_type = six.moves.builtins.buffer
 else:
-    db_binary_type = memoryview
+    db_binary_type = bytes
 
 
 class KeyStore(SQLBaseStore):

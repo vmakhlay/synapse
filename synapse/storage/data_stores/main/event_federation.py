@@ -169,11 +169,11 @@ class EventFederationWorkerStore(EventsWorkerStore, SignatureWorkerStore, SQLBas
         # prev_events of future events.
 
         sql = """
-            SELECT e.event_id FROM event_forward_extremities AS f
-            INNER JOIN events AS e USING (event_id)
+            SELECT TOP 10 e.event_id FROM event_forward_extremities AS f
+            INNER JOIN events AS e 
+            ON (f.event_id=e.event_id)
             WHERE f.room_id = ?
             ORDER BY e.depth DESC
-            LIMIT 10
         """
 
         txn.execute(sql, (room_id,))
@@ -201,17 +201,17 @@ class EventFederationWorkerStore(EventsWorkerStore, SignatureWorkerStore, SQLBas
                 )
 
             sql = """
-                SELECT room_id FROM event_forward_extremities
+                SELECT TOP %s room_id FROM event_forward_extremities
                 WHERE %s
                 GROUP BY room_id
                 HAVING count(*) > ?
                 ORDER BY count(*) DESC
-                LIMIT ?
             """ % (
+                limit,
                 where_clause,
             )
 
-            query_args = list(itertools.chain(room_id_filter, [min_count, limit]))
+            query_args = list(itertools.chain(room_id_filter, [min_count, ]))
             txn.execute(sql, query_args)
             return [room_id for room_id, in txn]
 
@@ -337,12 +337,11 @@ class EventFederationWorkerStore(EventsWorkerStore, SignatureWorkerStore, SQLBas
         # search.
 
         query = (
-            "SELECT depth, prev_event_id FROM event_edges"
-            " INNER JOIN events"
-            " ON prev_event_id = events.event_id"
-            " WHERE event_edges.event_id = ?"
-            " AND event_edges.is_state = ?"
-            " LIMIT ?"
+            '''SELECT TOP ? depth, prev_event_id FROM event_edges
+             INNER JOIN events 
+             ON prev_event_id = events.event_id 
+             WHERE event_edges.event_id = ? 
+             AND event_edges.is_state = ? '''
         )
 
         queue = PriorityQueue()
@@ -370,7 +369,7 @@ class EventFederationWorkerStore(EventsWorkerStore, SignatureWorkerStore, SQLBas
 
             event_results.add(event_id)
 
-            txn.execute(query, (event_id, False, limit - len(event_results)))
+            txn.execute(query, (limit - len(event_results)), event_id, False)
 
             for row in txn:
                 if row[1] not in event_results:

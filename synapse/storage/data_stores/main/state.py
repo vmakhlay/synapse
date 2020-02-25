@@ -362,11 +362,11 @@ class MainStateBackgroundUpdateStore(RoomMemberWorkerStore):
 
         def _background_remove_left_rooms_txn(txn):
             sql = """
-                SELECT DISTINCT room_id FROM current_state_events
-                WHERE room_id > ? ORDER BY room_id LIMIT ?
-            """
+                SELECT DISTINCT TOP {} room_id FROM current_state_events
+                WHERE room_id > ? ORDER BY room_id 
+            """.format(batch_size)
 
-            txn.execute(sql, (last_room_id, batch_size))
+            txn.execute(sql, (last_room_id,))
             room_ids = list(row[0] for row in txn)
             if not room_ids:
                 return True, set()
