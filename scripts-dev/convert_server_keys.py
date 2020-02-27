@@ -15,7 +15,7 @@ from unpaddedbase64 import encode_base64
 if six.PY2:
     db_type = six.moves.builtins.buffer
 else:
-    db_type = memoryview
+    db_type = bytes
 
 
 def select_v1_keys(connection):

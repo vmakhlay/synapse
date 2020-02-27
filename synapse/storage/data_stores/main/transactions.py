@@ -32,7 +32,7 @@ from synapse.util.caches.expiringcache import ExpiringCache
 if six.PY2:
     db_binary_type = six.moves.builtins.buffer
 else:
-    db_binary_type = memoryview
+    db_binary_type = bytes
 
 logger = logging.getLogger(__name__)
 

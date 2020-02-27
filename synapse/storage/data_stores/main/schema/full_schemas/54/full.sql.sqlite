@@ -8,7 +8,7 @@ CREATE TABLE access_tokens( id BIGINT PRIMARY KEY, user_id NVARCHAR(4000) NOT NU
 CREATE TABLE user_ips ( user_id NVARCHAR(4000) NOT NULL, access_token NVARCHAR(4000) NOT NULL, device_id NVARCHAR(4000), ip NVARCHAR(4000) NOT NULL, user_agent NVARCHAR(4000) NOT NULL, last_seen BIGINT NOT NULL );
 CREATE TABLE profiles( user_id NVARCHAR(4000) NOT NULL, displayname NVARCHAR(4000), avatar_url NVARCHAR(4000), UNIQUE(user_id) );
 CREATE TABLE received_transactions( transaction_id NVARCHAR(4000), origin NVARCHAR(4000), ts BIGINT, response_code INTEGER, response_json VARBINARY(4000), has_been_referenced smallint default 0, UNIQUE (transaction_id, origin) );
-CREATE TABLE destinations( destination NVARCHAR(4000) PRIMARY KEY, retry_last_ts BIGINT, retry_interval INTEGER );
+CREATE TABLE destinations( destination NVARCHAR(4000) PRIMARY KEY, retry_last_ts BIGINT, retry_interval BIGINT );
 CREATE TABLE events( stream_ordering INTEGER PRIMARY KEY, topological_ordering BIGINT NOT NULL, event_id NVARCHAR(4000) NOT NULL, type NVARCHAR(4000) NOT NULL, room_id NVARCHAR(4000) NOT NULL, content NVARCHAR(4000), unrecognized_keys NVARCHAR(4000), processed BIT NOT NULL, outlier BIT NOT NULL, depth BIGINT DEFAULT 0 NOT NULL, origin_server_ts BIGINT, received_ts BIGINT, sender NVARCHAR(4000), contains_url BIT, UNIQUE (event_id) );
 CREATE INDEX events_order_room ON events ( room_id, topological_ordering, stream_ordering );
 CREATE TABLE event_json( event_id NVARCHAR(4000) NOT NULL, room_id NVARCHAR(4000) NOT NULL, internal_metadata NVARCHAR(4000) NOT NULL, json NVARCHAR(4000) NOT NULL, format_version INTEGER, UNIQUE (event_id) );

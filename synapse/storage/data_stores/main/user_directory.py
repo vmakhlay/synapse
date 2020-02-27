@@ -681,17 +681,19 @@ class UserDirectoryStore(UserDirectoryBackgroundUpdateStore):
         sql = """
             SELECT room_id FROM (
                 SELECT c.room_id FROM current_state_events AS c
-                INNER JOIN room_memberships AS m USING (event_id)
+                INNER JOIN room_memberships AS m
+                ON (c.event_id=m.event_id)
                 WHERE type = 'm.room.member'
                     AND m.membership = 'join'
                     AND state_key = ?
             ) AS f1 INNER JOIN (
                 SELECT c.room_id FROM current_state_events AS c
-                INNER JOIN room_memberships AS m USING (event_id)
+                INNER JOIN room_memberships AS m 
+                ON (c.event_id=m.event_id)
                 WHERE type = 'm.room.member'
                     AND m.membership = 'join'
                     AND state_key = ?
-            ) f2 USING (room_id)
+            ) f2 ON (f1.room_id=f2.room_id)
         """
 
         rows = yield self.db.execute(
@@ -728,83 +730,36 @@ class UserDirectoryStore(UserDirectoryBackgroundUpdateStore):
         """
 
         if self.hs.config.user_directory_search_all_users:
-            join_args = (user_id,)
-            where_clause = "user_id != ?"
+            where_clause = "d.user_id != '{}'".format(user_id)
         else:
-            join_args = (user_id,)
             where_clause = """
                 (
                     EXISTS (select 1 from users_in_public_rooms WHERE user_id = t.user_id)
                     OR EXISTS (
                         SELECT 1 FROM users_who_share_private_rooms
-                        WHERE user_id = ? AND other_user_id = t.user_id
+                        WHERE user_id = '{}' AND other_user_id = t.user_id
                     )
                 )
-            """
+            """.format(user_id)
 
-        if isinstance(self.database_engine, PostgresEngine):
-            full_query, exact_query, prefix_query = _parse_query_postgres(search_term)
+        search_query = _parse_query_sqlite(search_term)
 
-            # We order by rank and then if they have profile info
-            # The ranking algorithm is hand tweaked for "best" results. Broadly
-            # the idea is we give a higher weight to exact matches.
-            # The array of numbers are the weights for the various part of the
-            # search: (domain, _, display name, localpart)
-            sql = """
-                SELECT d.user_id AS user_id, display_name, avatar_url
-                FROM user_directory_search as t
-                INNER JOIN user_directory AS d USING (user_id)
-                WHERE
-                    %s
-                    AND vector @@ to_tsquery('english', ?)
-                ORDER BY
-                    (CASE WHEN d.user_id IS NOT NULL THEN 4.0 ELSE 1.0 END)
-                    * (CASE WHEN display_name IS NOT NULL THEN 1.2 ELSE 1.0 END)
-                    * (CASE WHEN avatar_url IS NOT NULL THEN 1.2 ELSE 1.0 END)
-                    * (
-                        3 * ts_rank_cd(
-                            '{0.1, 0.1, 0.9, 1.0}',
-                            vector,
-                            to_tsquery('english', ?),
-                            8
-                        )
-                        + ts_rank_cd(
-                            '{0.1, 0.1, 0.9, 1.0}',
-                            vector,
-                            to_tsquery('english', ?),
-                            8
-                        )
-                    )
-                    DESC,
-                    display_name IS NULL,
-                    avatar_url IS NULL
-                LIMIT ?
-            """ % (
-                where_clause,
-            )
-            args = join_args + (full_query, exact_query, prefix_query, limit + 1)
-        else:
-            search_query = _parse_query_sqlite(search_term)
-
-            sql = """
-                SELECT d.user_id AS user_id, display_name, avatar_url
-                FROM user_directory_search as t
-                INNER JOIN user_directory AS d USING (user_id)
-                WHERE
-                    %s
-                    AND value MATCH ?
-                ORDER BY
-                    rank(matchinfo(user_directory_search)) DESC,
-                    display_name IS NULL,
-                    avatar_url IS NULL
-                LIMIT ?
-            """ % (
-                where_clause,
-            )
-            args = join_args + (search_query, limit + 1)
+        sql = """
+            SELECT TOP %s d.user_id AS user_id, display_name, avatar_url
+            FROM user_directory_search as t
+            INNER JOIN user_directory AS d 
+            ON (t.user_id = d.user_id)
+            WHERE
+                %s
+                AND %s
+        """ % (
+            limit + 1,
+            where_clause,
+            search_query
+        )
 
         results = yield self.db.execute(
-            "search_user_dir", self.db.cursor_to_dict, sql, *args
+            "search_user_dir", self.db.cursor_to_dict, sql,
         )
 
         limited = len(results) > limit
@@ -824,21 +779,5 @@ def _parse_query_sqlite(search_term):
 
     # Pull out the individual words, discarding any non-word characters.
     results = re.findall(r"([\w\-]+)", search_term, re.UNICODE)
-    return " & ".join("(%s* OR %s)" % (result, result) for result in results)
-
-
-def _parse_query_postgres(search_term):
-    """Takes a plain unicode string from the user and converts it into a form
-    that can be passed to database.
-    We use this so that we can add prefix matching, which isn't something
-    that is supported by default.
-    """
-
-    # Pull out the individual words, discarding any non-word characters.
-    results = re.findall(r"([\w\-]+)", search_term, re.UNICODE)
-
-    both = " & ".join("(%s:* | %s)" % (result, result) for result in results)
-    exact = " & ".join("%s" % (result,) for result in results)
-    prefix = " & ".join("%s:*" % (result,) for result in results)
-
-    return both, exact, prefix
+    return " ({}) ".format(" OR ".join(["value LIKE '%{}%'".format(result)
+                           for result in results]))

@@ -28,7 +28,7 @@ from synapse.util.caches.descriptors import cached, cachedList
 if six.PY2:
     db_binary_type = six.moves.builtins.buffer
 else:
-    db_binary_type = memoryview
+    db_binary_type = bytes
 
 
 class SignatureWorkerStore(SQLBaseStore):
