@@ -417,7 +417,8 @@ class RoomMemberWorkerStore(EventsWorkerStore):
             sql = """
                 SELECT room_id, e.stream_ordering
                 FROM current_state_events AS c
-                INNER JOIN events AS e USING (room_id, event_id)
+                INNER JOIN events AS e 
+                ON (c.room_id = e.room_id AND c.event_id=e.event_id)
                 WHERE
                     c.type = 'm.room.member'
                     AND state_key = ?
@@ -425,10 +426,12 @@ class RoomMemberWorkerStore(EventsWorkerStore):
             """
         else:
             sql = """
-                SELECT room_id, e.stream_ordering
+                SELECT c.room_id, e.stream_ordering
                 FROM current_state_events AS c
-                INNER JOIN room_memberships AS m USING (room_id, event_id)
-                INNER JOIN events AS e USING (room_id, event_id)
+                INNER JOIN room_memberships AS m 
+                ON (c.room_id = m.room_id AND c.event_id=m.event_id) 
+                INNER JOIN events AS e 
+                ON (c.room_id = e.room_id AND c.event_id=e.event_id)
                 WHERE
                     c.type = 'm.room.member'
                     AND state_key = ?

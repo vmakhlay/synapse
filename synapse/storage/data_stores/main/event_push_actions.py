@@ -580,10 +580,9 @@ class EventPushActionsWorkerStore(SQLBaseStore):
         # [10, 10, 20].
         #
         sql = (
-            "SELECT received_ts FROM events"
+            "SELECT TOP 1 received_ts FROM events"
             " WHERE stream_ordering <= ?"
             " ORDER BY stream_ordering DESC"
-            " LIMIT 1"
         )
 
         while range_end - range_start > 0:

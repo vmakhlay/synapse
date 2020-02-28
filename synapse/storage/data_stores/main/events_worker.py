@@ -684,7 +684,8 @@ class EventsWorkerStore(SQLBaseStore):
                 " e.format_version, "
                 " rej.reason "
                 " FROM event_json as e"
-                " LEFT JOIN rejections as rej USING (event_id)"
+                " LEFT JOIN rejections as rej "
+                "ON (e.event_id=rej.event_id) "
                 " WHERE "
             )
 

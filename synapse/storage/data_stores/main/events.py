@@ -317,19 +317,21 @@ class EventsStore(
             while to_recursively_check:
                 sql = """
                 SELECT
-                    event_id, prev_event_id, internal_metadata,
-                    rejections.event_id IS NOT NULL
+                    event_edges.event_id, prev_event_id, internal_metadata,
+                    CASE 
+                      WHEN rejections.event_id IS NOT NULL THEN 1 ELSE 0 
+                    END
                 FROM event_edges
-                    INNER JOIN events USING (event_id)
-                    LEFT JOIN rejections USING (event_id)
-                    LEFT JOIN event_json USING (event_id)
+                    INNER JOIN events ON (event_edges.event_id=events.event_id)
+                    LEFT JOIN rejections ON (event_edges.event_id=rejections.event_id) 
+                    LEFT JOIN event_json ON (event_edges.event_id=event_json.event_id) 
                 WHERE
-                    NOT events.outlier
+                    events.outlier = 0 
                     AND
                 """
 
                 clause, args = make_in_list_sql_clause(
-                    self.database_engine, "event_id", to_recursively_check
+                    self.database_engine, "event_edges.event_id", to_recursively_check
                 )
 
                 txn.execute(sql + clause, args)
@@ -576,17 +578,19 @@ class EventsStore(
                 )
 
             if to_insert:
-                txn.executemany(
-                    """INSERT INTO local_current_membership
-                        (room_id, user_id, event_id, membership)
-                    VALUES (?, ?, ?, (SELECT membership FROM room_memberships WHERE event_id = ?))
-                    """,
-                    [
+                args = [
                         (room_id, key[1], ev_id, ev_id)
                         for key, ev_id in to_insert.items()
                         if key[0] == EventTypes.Member and self.is_mine_id(key[1])
-                    ],
-                )
+                    ]
+                if args:
+                    txn.executemany(
+                        """INSERT INTO local_current_membership
+                            (room_id, user_id, event_id, membership)
+                        VALUES (?, ?, ?, (SELECT membership FROM room_memberships WHERE event_id = ?))
+                        """,
+                        args,
+                    )
 
             txn.call_after(
                 self._curr_state_delta_stream_cache.entity_has_changed,
@@ -1071,7 +1075,8 @@ class EventsStore(
                 " r.redacts as redacts,"
                 " rej.event_id as rejects "
                 " FROM events as e"
-                " LEFT JOIN rejections as rej USING (event_id)"
+                " LEFT JOIN rejections as rej ON "
+                "(e.event_id=rej.event_id) "
                 " LEFT JOIN redactions as r ON e.event_id = r.redacts"
                 " WHERE "
             )

@@ -24,6 +24,7 @@ import time
 
 from mock import Mock
 
+import pyodbc
 from canonicaljson import json
 
 from twisted.internet.defer import Deferred, ensureDeferred, succeed
@@ -44,7 +45,15 @@ from synapse.util.ratelimitutils import FederationRateLimiter
 
 from tests.server import get_clock, make_request, render, setup_test_homeserver
 from tests.test_utils.logging_setup import setup_logging
-from tests.utils import default_config, setupdb
+from tests.utils import (
+    MSSQL_BASE_DB,
+    MSSQL_DRIVER,
+    MSSQL_HOST,
+    MSSQL_PASSWORD,
+    MSSQL_USER,
+    default_config,
+    setupdb,
+)
 
 setupdb()
 setup_logging()
@@ -113,7 +122,20 @@ class TestCase(unittest.TestCase):
             # they are GCed (see the logcontext docs)
             gc.collect()
             LoggingContext.set_current_context(LoggingContext.sentinel)
-
+            cnxn = pyodbc.connect(
+                'DRIVER={};SERVER={};DATABASE={};UID={};PWD={}'.format(
+                    MSSQL_DRIVER,
+                    MSSQL_HOST,
+                    MSSQL_BASE_DB,
+                    MSSQL_USER,
+                    MSSQL_PASSWORD
+            ))
+            cursor = cnxn.cursor()
+            query = '''
+                EXEC sp_msforeachtable 'drop table ?';
+            '''
+            cursor.execute(query)
+            cursor.commit()
             return ret
 
     def assertObjectHasAttributes(self, attrs, obj):

@@ -526,15 +526,18 @@ class EventFederationStore(EventFederationWorkerStore):
             " )"
         )
 
-        txn.executemany(
-            query,
-            [
+        args = [
                 (e_id, ev.room_id, e_id, ev.room_id, e_id, ev.room_id, False)
                 for ev in events
                 for e_id in ev.prev_event_ids()
                 if not ev.internal_metadata.is_outlier()
-            ],
-        )
+            ]
+
+        if args:
+            txn.executemany(
+                query,
+                args,
+            )
 
         query = (
             "DELETE FROM event_backward_extremities"

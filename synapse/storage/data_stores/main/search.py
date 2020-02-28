@@ -306,38 +306,16 @@ class SearchBackgroundUpdateStore(SQLBaseStore):
         """
         if not self.hs.config.enable_search:
             return
-        if isinstance(self.database_engine, PostgresEngine):
-            sql = (
-                "INSERT INTO event_search"
-                " (event_id, room_id, key, vector, stream_ordering, origin_server_ts)"
-                " VALUES (?,?,?,to_tsvector('english', ?),?,?)"
-            )
+        sql = (
+            "INSERT INTO event_search(event_id, room_id,[key], [value])"
+            " VALUES (?,?,?,?)"
+        )
+        args = (
+            (entry.event_id, entry.room_id, entry.key, entry.value)
+            for entry in entries
+        )
 
-            args = (
-                (
-                    entry.event_id,
-                    entry.room_id,
-                    entry.key,
-                    entry.value,
-                    entry.stream_ordering,
-                    entry.origin_server_ts,
-                )
-                for entry in entries
-            )
-
-            txn.executemany(sql, args)
-
-        else:
-            sql = (
-                "INSERT INTO event_search (event_id, room_id, key, value)"
-                " VALUES (?,?,?,?)"
-            )
-            args = (
-                (entry.event_id, entry.room_id, entry.key, entry.value)
-                for entry in entries
-            )
-
-            txn.executemany(sql, args)
+        txn.executemany(sql, args)
 
 
 class SearchStore(SearchBackgroundUpdateStore):
